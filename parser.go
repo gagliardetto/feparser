@@ -583,18 +583,18 @@ func FormatKindString(typ types.Type) string {
 	case *types.Array:
 		{
 			buf.WriteString(Sf(
-				"an array %s: [%v]%s",
-				t.String(),
+				"an array [%v] of %s (i.e. %s)",
 				t.Len(),
 				FormatKindString(t.Elem()),
+				t.String(),
 			))
 		}
 	case *types.Slice:
 		{
 			buf.WriteString(Sf(
-				"a slice %s: []%s",
-				t.String(),
+				"a slice of %s (i.e. %s)",
 				FormatKindString(t.Elem()),
+				t.String(),
 			))
 		}
 	case *types.Struct:
@@ -633,9 +633,10 @@ func FormatKindString(typ types.Type) string {
 	case *types.Map:
 		{
 			buf.WriteString(Sf(
-				"a map[%s]%s",
+				"a map with key %s, and value %s (i.e. %s)",
 				FormatKindString(t.Key()),
 				FormatKindString(t.Elem()),
+				t.String(),
 			))
 		}
 	case *types.Chan:
