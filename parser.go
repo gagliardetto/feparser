@@ -14,74 +14,74 @@ import (
 	. "github.com/gagliardetto/utilz"
 )
 
-func Load(pk *scanner.Package) (*FEModule, error) {
-	feModule := &FEModule{
+func Load(pk *scanner.Package) (*FEPackage, error) {
+	fePackage := &FEPackage{
 		Funcs:            make([]*FEFunc, 0),
 		TypeMethods:      make([]*FETypeMethod, 0),
 		InterfaceMethods: make([]*FEInterfaceMethod, 0),
 	}
 
 	{
-		feModule.ID = pk.Path
-		feModule.PkgPath = scanner.RemoveGoSrcClonePath(pk.Path)
-		feModule.PkgName = pk.Name
+		fePackage.ID = pk.Path
+		fePackage.PkgPath = scanner.RemoveGoSrcClonePath(pk.Path)
+		fePackage.PkgName = pk.Name
 
 		for _, fn := range pk.Funcs {
 			if fn.Receiver == nil {
 				f := getFEFunc(fn)
 				// TODO: what to do with aliases???
-				f.PkgPath = feModule.PkgPath
-				feModule.Funcs = append(feModule.Funcs, f)
+				f.PkgPath = fePackage.PkgPath
+				fePackage.Funcs = append(fePackage.Funcs, f)
 			}
 		}
 		for _, mt := range pk.Methods {
 			meth := getFETypeMethod(mt, pk.Funcs)
 			if meth != nil {
-				feModule.TypeMethods = append(feModule.TypeMethods, meth)
+				fePackage.TypeMethods = append(fePackage.TypeMethods, meth)
 			}
 		}
 		for _, it := range pk.Interfaces {
-			feModule.InterfaceMethods = append(feModule.InterfaceMethods, getAllFEInterfaceMethods(it)...)
+			fePackage.InterfaceMethods = append(fePackage.InterfaceMethods, getAllFEInterfaceMethods(it)...)
 		}
 	}
 
 	// Sort funcs by name:
-	sort.Slice(feModule.Funcs, func(i, j int) bool {
-		return feModule.Funcs[i].Name < feModule.Funcs[j].Name
+	sort.Slice(fePackage.Funcs, func(i, j int) bool {
+		return fePackage.Funcs[i].Name < fePackage.Funcs[j].Name
 	})
 	// Sort type methods by receiver:
-	sort.Slice(feModule.TypeMethods, func(i, j int) bool {
+	sort.Slice(fePackage.TypeMethods, func(i, j int) bool {
 		// If same receiver...
-		if feModule.TypeMethods[i].Receiver.QualifiedName == feModule.TypeMethods[j].Receiver.QualifiedName {
+		if fePackage.TypeMethods[i].Receiver.QualifiedName == fePackage.TypeMethods[j].Receiver.QualifiedName {
 			// ... sort by func name:
-			return feModule.TypeMethods[i].Func.Name < feModule.TypeMethods[j].Func.Name
+			return fePackage.TypeMethods[i].Func.Name < fePackage.TypeMethods[j].Func.Name
 		}
-		return feModule.TypeMethods[i].Receiver.QualifiedName < feModule.TypeMethods[j].Receiver.QualifiedName
+		return fePackage.TypeMethods[i].Receiver.QualifiedName < fePackage.TypeMethods[j].Receiver.QualifiedName
 	})
 	// Sort interface methods by receiver:
-	sort.Slice(feModule.InterfaceMethods, func(i, j int) bool {
+	sort.Slice(fePackage.InterfaceMethods, func(i, j int) bool {
 		// If same receiver...
-		if feModule.InterfaceMethods[i].Receiver.QualifiedName == feModule.InterfaceMethods[j].Receiver.QualifiedName {
+		if fePackage.InterfaceMethods[i].Receiver.QualifiedName == fePackage.InterfaceMethods[j].Receiver.QualifiedName {
 			// ... sort by func name:
-			return feModule.InterfaceMethods[i].Func.Name < feModule.InterfaceMethods[j].Func.Name
+			return fePackage.InterfaceMethods[i].Func.Name < fePackage.InterfaceMethods[j].Func.Name
 		}
-		return feModule.InterfaceMethods[i].Receiver.QualifiedName < feModule.InterfaceMethods[j].Receiver.QualifiedName
+		return fePackage.InterfaceMethods[i].Receiver.QualifiedName < fePackage.InterfaceMethods[j].Receiver.QualifiedName
 	})
 
 	{ // Deduplicate:
-		feModule.Funcs = DeduplicateSlice(feModule.Funcs, func(i int) string {
-			return feModule.Funcs[i].Signature
+		fePackage.Funcs = DeduplicateSlice(fePackage.Funcs, func(i int) string {
+			return fePackage.Funcs[i].Signature
 		}).([]*FEFunc)
 
-		feModule.TypeMethods = DeduplicateSlice(feModule.TypeMethods, func(i int) string {
-			return feModule.TypeMethods[i].Func.Signature
+		fePackage.TypeMethods = DeduplicateSlice(fePackage.TypeMethods, func(i int) string {
+			return fePackage.TypeMethods[i].Func.Signature
 		}).([]*FETypeMethod)
 
-		feModule.InterfaceMethods = DeduplicateSlice(feModule.InterfaceMethods, func(i int) string {
-			return feModule.InterfaceMethods[i].Func.Signature
+		fePackage.InterfaceMethods = DeduplicateSlice(fePackage.InterfaceMethods, func(i int) string {
+			return fePackage.InterfaceMethods[i].Func.Signature
 		}).([]*FEInterfaceMethod)
 	}
-	return feModule, nil
+	return fePackage, nil
 }
 
 type Identity struct {
@@ -93,10 +93,11 @@ type CodeQlIdentity struct {
 	Placeholder string
 	Identity
 }
-type FEModule struct {
-	PkgPath          string
-	PkgName          string
-	ID               string
+type FEPackage struct {
+	PkgPath string
+	PkgName string
+	ID      string
+
 	Funcs            []*FEFunc
 	TypeMethods      []*FETypeMethod
 	InterfaceMethods []*FEInterfaceMethod
