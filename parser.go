@@ -336,7 +336,12 @@ func getFEType(tp scanner.Type) *FEType {
 	fe.IsStruct = tp.IsStruct()
 	fe.IsBasic = tp.IsBasic()
 	if tp.IsVariadic() {
-		fe.TypeString = "..." + tp.GetType().(*types.Slice).Elem().String()
+		sl, ok := tp.GetType().(*types.Slice)
+		if ok {
+			fe.TypeString = "..." + sl.Elem().String()
+		} else {
+			//TODO
+		}
 	} else {
 		fe.TypeString = tp.GetType().String()
 	}
