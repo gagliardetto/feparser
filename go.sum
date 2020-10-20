@@ -27,6 +27,8 @@ github.com/gagliardetto/codebox v0.0.0-20201020194401-35f6b886d379 h1:dd31JjGye8
 github.com/gagliardetto/codebox v0.0.0-20201020194401-35f6b886d379/go.mod h1:u0dxritH0YSCR1CrpmBOMJ5F1SbQMLpnXwddkTLH1pY=
 github.com/gagliardetto/codebox v0.0.0-20201020194835-253829c84a86 h1:VJUwtUS1kPONnJVm8fo0LGQOC3lgXQbBP+CXNw+0sbI=
 github.com/gagliardetto/codebox v0.0.0-20201020194835-253829c84a86/go.mod h1:u0dxritH0YSCR1CrpmBOMJ5F1SbQMLpnXwddkTLH1pY=
+github.com/gagliardetto/codebox v0.0.0-20201020195141-0d78a6d1337e h1:UdiQFohEUqQq3TpoxW6HSFay47dq7oXndUcpBkEgoKo=
+github.com/gagliardetto/codebox v0.0.0-20201020195141-0d78a6d1337e/go.mod h1:u0dxritH0YSCR1CrpmBOMJ5F1SbQMLpnXwddkTLH1pY=
 github.com/gagliardetto/feparser v0.0.0-20201020161618-7f23b4f2bcf7/go.mod h1:1ula649k+N2bbJRIjun5HbcJy8GDEHAyai9HW9+Z36E=
 github.com/gagliardetto/feparser v0.0.0-20201020193055-8442f492b885/go.mod h1:VDhM9uRIl2V7LoTxTupJlOed2FidnlOelafBOVSlOqk=
 github.com/gagliardetto/utilz v0.0.0-20200715140922-c894e8869ddc/go.mod h1:FqrJIHaVBve1PigrIcinRW1cahs8TfHVpvRoks+g6sU=
