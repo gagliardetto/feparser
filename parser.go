@@ -9,9 +9,11 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gagliardetto/codebox/scanner"
 	. "github.com/gagliardetto/utilz"
+	"golang.org/x/tools/go/packages"
 )
 
 func Load(pk *scanner.Package) (*FEPackage, error) {
@@ -20,6 +22,8 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		TypeMethods:      make([]*FETypeMethod, 0),
 		InterfaceMethods: make([]*FEInterfaceMethod, 0),
 	}
+
+	fePackage.Module = scanModule(pk.Module)
 
 	{
 		fePackage.ID = pk.Path
@@ -103,12 +107,27 @@ type FEPackage struct {
 	TypeMethods      []*FETypeMethod
 	InterfaceMethods []*FEInterfaceMethod
 }
+
+func scanModule(mod *packages.Module) *Module {
+	if mod == nil {
+		return nil
+	}
+	res := &Module{
+		Path:      mod.Path,
+		Version:   mod.Version,
+		Time:      mod.Time,
+		Main:      mod.Main,
+		GoVersion: mod.GoVersion,
+	}
+	return res
+}
+
 type Module struct {
 	Path      string
 	Version   string
 	Root      string
 	GoVersion string
-	Time      string
+	Time      *time.Time
 	Main      bool
 }
 
