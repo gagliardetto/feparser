@@ -755,7 +755,8 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 	}
 
 	for _, field := range st.Fields {
-		fe.Fields = append(fe.Fields, getFEType(field.Type))
+		feField := getFEType(field.BaseType)
+		fe.Fields = append(fe.Fields, feField)
 	}
 
 	return &fe
