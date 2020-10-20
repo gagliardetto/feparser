@@ -314,12 +314,12 @@ func (obj *Identity) Validate() error {
 }
 
 type FEType struct {
-	Identity      CodeQlIdentity
-	VarName       string
+	Identity      *CodeQlIdentity `json:",omitempty"`
+	VarName       string          `json:",omitempty"`
 	TypeName      string
-	PkgName       string
-	PkgPath       string
-	QualifiedName string
+	PkgName       string `json:",omitempty"`
+	PkgPath       string `json:",omitempty"`
+	QualifiedName string `json:",omitempty"`
 	IsPtr         bool
 	IsBasic       bool
 	IsVariadic    bool
@@ -404,7 +404,7 @@ func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMetho
 	fe.Docs = make([]string, 0)
 
 	fe.Receiver = &FEReceiver{}
-	fe.Receiver.Identity = CodeQlIdentity{
+	fe.Receiver.Identity = &CodeQlIdentity{
 		Placeholder: "isReceiver()",
 		Identity: Identity{
 			Element: ElementReceiver,
@@ -494,7 +494,7 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 	fe.CodeQL = NewCodeQlFinalVals()
 
 	fe.Receiver = &FEReceiver{}
-	fe.Receiver.Identity = CodeQlIdentity{
+	fe.Receiver.Identity = &CodeQlIdentity{
 		Placeholder: "isReceiver()",
 		Identity: Identity{
 			Element: ElementReceiver,
@@ -693,7 +693,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 		if v.IsVariadic && isNotLast {
 			panic(Sf("parameter %v is variadic but is NOT the last parameter", v))
 		}
-		v.Identity = CodeQlIdentity{
+		v.Identity = &CodeQlIdentity{
 			Placeholder: placeholder,
 			Identity: Identity{
 				Element:    ElementParameter,
@@ -710,7 +710,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 		if len(fn.Output) == 1 {
 			placeholder = "isResult()"
 		}
-		v.Identity = CodeQlIdentity{
+		v.Identity = &CodeQlIdentity{
 			Placeholder: placeholder,
 			Identity: Identity{
 				Element:    ElementResult,
@@ -739,6 +739,8 @@ func RemoveThisPackagePathFromSignature(signature string, pkgPath string) string
 }
 
 func scanStruct(st *scanner.Struct) *FEStruct {
+	// TODO: don't scan embedded structs; either they are in this package (and I'll find them in this list),
+	// or they are in another package (and they are not a problem now).
 	var fe FEStruct
 	fe.Fields = make([]*FEType, 0)
 
@@ -767,6 +769,7 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 		}
 	}
 
+	fe.ID = FormatCodeQlName("struct-" + fe.TypeName)
 	for _, field := range st.Fields {
 		fe.Fields = append(fe.Fields, getFEType(field.Type))
 	}
@@ -777,6 +780,7 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 type FEStruct struct {
 	*FEType
 
+	ID       string
 	Fields   []*FEType
 	original *scanner.Struct
 }
