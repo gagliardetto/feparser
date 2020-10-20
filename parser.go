@@ -335,13 +335,10 @@ func getFEType(tp scanner.Type) *FEType {
 	fe.IsPtr = tp.IsPtr()
 	fe.IsStruct = tp.IsStruct()
 	fe.IsBasic = tp.IsBasic()
-	if tp.IsVariadic() {
-		sl, ok := tp.GetType().(*types.Slice)
-		if ok {
-			fe.TypeString = "..." + sl.Elem().String()
-		} else {
-			//TODO
-		}
+
+	sl, ok := tp.GetType().(*types.Slice)
+	if tp.IsVariadic() && ok {
+		fe.TypeString = "..." + sl.Elem().String()
 	} else {
 		fe.TypeString = tp.GetType().String()
 	}
@@ -385,6 +382,8 @@ func getFEType(tp scanner.Type) *FEType {
 				fe.TypeName = tp.TypeString()
 			}
 		}
+	} else {
+		fe.TypeName = tp.TypeString()
 	}
 
 	return &fe
@@ -734,8 +733,28 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 	var fe FEStruct
 	fe.original = st
 
-	// TODO:
+	// Get basic type info:
 	fe.FEType = getFEType(st.BaseType)
+
+	// Get more type info:
+	{
+		named := st.Type
+		if named != nil {
+			fe.TypeName = named.Obj().Name()
+			if pkg := named.Obj().Pkg(); pkg != nil {
+				fe.QualifiedName = scanner.StringRemoveGoPath(pkg.Path()) + "." + named.Obj().Name()
+				fe.PkgPath = scanner.RemoveGoPath(named.Obj().Pkg())
+				fe.PkgName = named.Obj().Pkg().Name()
+			}
+		}
+	}
+	{
+		// TODO: ignore anonymous structs?
+		anon := st.AnonymousType
+		if anon != nil {
+			fe.TypeName = st.AnonymousType.String()
+		}
+	}
 
 	for _, field := range st.Fields {
 		fe.Fields = append(fe.Fields, getFEType(field.Type))
