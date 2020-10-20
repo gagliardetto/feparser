@@ -329,10 +329,7 @@ func (v *FEType) GetOriginal() scanner.Type {
 func getFEType(tp scanner.Type) *FEType {
 	var fe FEType
 	fe.original = tp
-	varName := tp.GetTypesVar().Name()
-	if varName != "" {
-		fe.VarName = varName
-	}
+
 	fe.IsVariadic = tp.IsVariadic()
 	fe.IsNullable = tp.IsNullable()
 	fe.IsPtr = tp.IsPtr()
@@ -345,38 +342,43 @@ func getFEType(tp scanner.Type) *FEType {
 	}
 	fe.KindString = FormatKindString(tp.GetType())
 
-	finalType := tp.GetTypesVar().Type()
-	{
-		slice, ok := tp.GetTypesVar().Type().(*types.Slice)
-		if ok {
-			finalType = slice.Elem()
+	if tp.GetTypesVar() != nil {
+		varName := tp.GetTypesVar().Name()
+		if varName != "" {
+			fe.VarName = varName
 		}
-	}
-	{
-		array, ok := tp.GetTypesVar().Type().(*types.Array)
-		if ok {
-			finalType = array.Elem()
-		}
-	}
-	// Check if pointer:
-	{
-		pointer, ok := finalType.(*types.Pointer)
-		if ok {
-			finalType = pointer.Elem()
-		}
-	}
-
-	{
-		named, ok := finalType.(*types.Named)
-		if ok {
-			fe.TypeName = named.Obj().Name()
-			if pkg := named.Obj().Pkg(); pkg != nil {
-				fe.QualifiedName = scanner.StringRemoveGoPath(pkg.Path()) + "." + named.Obj().Name()
-				fe.PkgPath = scanner.RemoveGoPath(named.Obj().Pkg())
-				fe.PkgName = named.Obj().Pkg().Name()
+		finalType := tp.GetTypesVar().Type()
+		{
+			slice, ok := tp.GetTypesVar().Type().(*types.Slice)
+			if ok {
+				finalType = slice.Elem()
 			}
-		} else {
-			fe.TypeName = tp.TypeString()
+		}
+		{
+			array, ok := tp.GetTypesVar().Type().(*types.Array)
+			if ok {
+				finalType = array.Elem()
+			}
+		}
+		// Check if pointer:
+		{
+			pointer, ok := finalType.(*types.Pointer)
+			if ok {
+				finalType = pointer.Elem()
+			}
+		}
+		{
+			named, ok := finalType.(*types.Named)
+			if ok {
+				fe.TypeName = named.Obj().Name()
+				if pkg := named.Obj().Pkg(); pkg != nil {
+					fe.QualifiedName = scanner.StringRemoveGoPath(pkg.Path()) + "." + named.Obj().Name()
+					fe.PkgPath = scanner.RemoveGoPath(named.Obj().Pkg())
+					fe.PkgName = named.Obj().Pkg().Name()
+				}
+			} else {
+				fe.TypeName = tp.TypeString()
+			}
 		}
 	}
 
@@ -727,6 +729,7 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 	var fe FEStruct
 	fe.original = st
 
+	// TODO:
 	fe.FEType = getFEType(st.BaseType)
 
 	for _, field := range st.Fields {
