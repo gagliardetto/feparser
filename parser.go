@@ -27,7 +27,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 	fePackage.Module = scanModule(pk.Module)
 
 	{
-		fePackage.ID = FormatCodeQlName(pk.Path)
+		fePackage.ID = FormatCodeQlName("package-" + pk.Path)
 		fePackage.PkgPath = scanner.RemoveGoSrcClonePath(pk.Path)
 		fePackage.PkgName = pk.Name
 
@@ -76,6 +76,10 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		}
 		return fePackage.InterfaceMethods[i].Receiver.QualifiedName < fePackage.InterfaceMethods[j].Receiver.QualifiedName
 	})
+	// Sort structs by name:
+	sort.Slice(fePackage.Structs, func(i, j int) bool {
+		return fePackage.Structs[i].TypeName < fePackage.Structs[j].TypeName
+	})
 
 	{ // Deduplicate:
 		fePackage.Funcs = DeduplicateSlice(fePackage.Funcs, func(i int) string {
@@ -89,6 +93,10 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		fePackage.InterfaceMethods = DeduplicateSlice(fePackage.InterfaceMethods, func(i int) string {
 			return fePackage.InterfaceMethods[i].Func.Signature
 		}).([]*FEInterfaceMethod)
+
+		fePackage.Structs = DeduplicateSlice(fePackage.Structs, func(i int) string {
+			return fePackage.Structs[i].QualifiedName
+		}).([]*FEStruct)
 	}
 	return fePackage, nil
 }
@@ -462,7 +470,7 @@ func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMetho
 		}
 	}
 
-	fe.ID = "type-method-" + fe.Receiver.TypeName + "-" + methodFuncName
+	fe.ID = FormatCodeQlName("type-method-" + fe.Receiver.TypeName + "-" + methodFuncName)
 	fe.ClassName = FormatCodeQlName(fe.Receiver.TypeName + "-" + methodFuncName)
 
 	{
@@ -516,7 +524,7 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 		fe.Func = feFunc
 	}
 
-	fe.ID = "interface-method-" + fe.Receiver.TypeName + "-" + methodFuncName
+	fe.ID = FormatCodeQlName("interface-method-" + fe.Receiver.TypeName + "-" + methodFuncName)
 	fe.ClassName = FormatCodeQlName(fe.Receiver.TypeName + "-" + methodFuncName)
 
 	{
@@ -732,6 +740,8 @@ func RemoveThisPackagePathFromSignature(signature string, pkgPath string) string
 
 func scanStruct(st *scanner.Struct) *FEStruct {
 	var fe FEStruct
+	fe.Fields = make([]*FEType, 0)
+
 	fe.original = st
 
 	// Get basic type info:
