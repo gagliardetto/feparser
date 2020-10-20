@@ -21,6 +21,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		Funcs:            make([]*FEFunc, 0),
 		TypeMethods:      make([]*FETypeMethod, 0),
 		InterfaceMethods: make([]*FEInterfaceMethod, 0),
+		Structs:          make([]*FEStruct, 0),
 	}
 
 	fePackage.Module = scanModule(pk.Module)
@@ -46,6 +47,10 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		}
 		for _, it := range pk.Interfaces {
 			fePackage.InterfaceMethods = append(fePackage.InterfaceMethods, getAllFEInterfaceMethods(it)...)
+		}
+
+		for _, str := range pk.Structs {
+			fePackage.Structs = append(fePackage.Structs, scanStruct(str))
 		}
 	}
 
@@ -106,6 +111,7 @@ type FEPackage struct {
 	Funcs            []*FEFunc
 	TypeMethods      []*FETypeMethod
 	InterfaceMethods []*FEInterfaceMethod
+	Structs          []*FEStruct
 }
 
 func scanModule(mod *packages.Module) *Module {
@@ -715,4 +721,28 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 func RemoveThisPackagePathFromSignature(signature string, pkgPath string) string {
 	clean := strings.Replace(signature, pkgPath+".", "", -1)
 	return clean
+}
+
+func scanStruct(st *scanner.Struct) *FEStruct {
+	var fe FEStruct
+	fe.original = st
+
+	fe.FEType = getFEType(st.BaseType)
+
+	for _, field := range st.Fields {
+		fe.Fields = append(fe.Fields, getFEType(field.Type))
+	}
+
+	return &fe
+}
+
+type FEStruct struct {
+	*FEType
+
+	Fields   []*FEType
+	original *scanner.Struct
+}
+
+func (v *FEStruct) GetOriginal() *scanner.Struct {
+	return v.original
 }
