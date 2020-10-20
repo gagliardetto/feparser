@@ -98,9 +98,18 @@ type FEPackage struct {
 	PkgName string
 	ID      string
 
+	Module           *Module
 	Funcs            []*FEFunc
 	TypeMethods      []*FETypeMethod
 	InterfaceMethods []*FEInterfaceMethod
+}
+type Module struct {
+	Path      string
+	Version   string
+	Root      string
+	GoVersion string
+	Time      string
+	Main      bool
 }
 
 type FEFunc struct {
