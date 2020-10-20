@@ -379,7 +379,9 @@ func getFEType(tp scanner.Type) *FEType {
 					fe.PkgName = named.Obj().Pkg().Name()
 				}
 			} else {
-				fe.TypeName = tp.TypeString()
+				if _, ok := tp.(*scanner.BaseType); !ok {
+					fe.TypeName = tp.TypeString()
+				}
 			}
 		}
 	}
