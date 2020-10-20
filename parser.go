@@ -382,8 +382,6 @@ func getFEType(tp scanner.Type) *FEType {
 				fe.TypeName = tp.TypeString()
 			}
 		}
-	} else {
-		fe.TypeName = tp.TypeString()
 	}
 
 	return &fe
