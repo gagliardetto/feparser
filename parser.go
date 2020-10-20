@@ -26,7 +26,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 	fePackage.Module = scanModule(pk.Module)
 
 	{
-		fePackage.ID = pk.Path
+		fePackage.ID = FormatCodeQlName(pk.Path)
 		fePackage.PkgPath = scanner.RemoveGoSrcClonePath(pk.Path)
 		fePackage.PkgName = pk.Name
 
