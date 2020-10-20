@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"go/types"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/gagliardetto/codebox/scanner"
@@ -14,8 +15,73 @@ import (
 )
 
 func Load(pk *scanner.Package) (*FEModule, error) {
-	// TODO:
-	return nil, nil
+	feModule := &FEModule{
+		Funcs:            make([]*FEFunc, 0),
+		TypeMethods:      make([]*FETypeMethod, 0),
+		InterfaceMethods: make([]*FEInterfaceMethod, 0),
+	}
+
+	{
+		feModule.ID = pk.Path
+		feModule.PkgPath = scanner.RemoveGoSrcClonePath(pk.Path)
+		feModule.PkgName = pk.Name
+
+		for _, fn := range pk.Funcs {
+			if fn.Receiver == nil {
+				f := getFEFunc(fn)
+				// TODO: what to do with aliases???
+				f.PkgPath = feModule.PkgPath
+				feModule.Funcs = append(feModule.Funcs, f)
+			}
+		}
+		for _, mt := range pk.Methods {
+			meth := getFETypeMethod(mt, pk.Funcs)
+			if meth != nil {
+				feModule.TypeMethods = append(feModule.TypeMethods, meth)
+			}
+		}
+		for _, it := range pk.Interfaces {
+			feModule.InterfaceMethods = append(feModule.InterfaceMethods, getAllFEInterfaceMethods(it)...)
+		}
+	}
+
+	// Sort funcs by name:
+	sort.Slice(feModule.Funcs, func(i, j int) bool {
+		return feModule.Funcs[i].Name < feModule.Funcs[j].Name
+	})
+	// Sort type methods by receiver:
+	sort.Slice(feModule.TypeMethods, func(i, j int) bool {
+		// If same receiver...
+		if feModule.TypeMethods[i].Receiver.QualifiedName == feModule.TypeMethods[j].Receiver.QualifiedName {
+			// ... sort by func name:
+			return feModule.TypeMethods[i].Func.Name < feModule.TypeMethods[j].Func.Name
+		}
+		return feModule.TypeMethods[i].Receiver.QualifiedName < feModule.TypeMethods[j].Receiver.QualifiedName
+	})
+	// Sort interface methods by receiver:
+	sort.Slice(feModule.InterfaceMethods, func(i, j int) bool {
+		// If same receiver...
+		if feModule.InterfaceMethods[i].Receiver.QualifiedName == feModule.InterfaceMethods[j].Receiver.QualifiedName {
+			// ... sort by func name:
+			return feModule.InterfaceMethods[i].Func.Name < feModule.InterfaceMethods[j].Func.Name
+		}
+		return feModule.InterfaceMethods[i].Receiver.QualifiedName < feModule.InterfaceMethods[j].Receiver.QualifiedName
+	})
+
+	{ // Deduplicate:
+		feModule.Funcs = DeduplicateSlice(feModule.Funcs, func(i int) string {
+			return feModule.Funcs[i].Signature
+		}).([]*FEFunc)
+
+		feModule.TypeMethods = DeduplicateSlice(feModule.TypeMethods, func(i int) string {
+			return feModule.TypeMethods[i].Func.Signature
+		}).([]*FETypeMethod)
+
+		feModule.InterfaceMethods = DeduplicateSlice(feModule.InterfaceMethods, func(i int) string {
+			return feModule.InterfaceMethods[i].Func.Signature
+		}).([]*FEInterfaceMethod)
+	}
+	return feModule, nil
 }
 
 type Identity struct {
@@ -116,7 +182,7 @@ func (obj *CodeQlFinalVals) Validate() error {
 	if obj.Blocks == nil || len(obj.Blocks) == 0 {
 		return errors.New("obj.Blocks is not set")
 	}
-	if err := validateBlocksAreActive(obj.Blocks...); err != nil {
+	if err := ValidateBlocksAreActive(obj.Blocks...); err != nil {
 		return err
 	}
 
@@ -448,7 +514,7 @@ func FormatCodeQlName(name string) string {
 	return ToCamel(strings.ReplaceAll(name, "\"", ""))
 }
 
-func validateBlocksAreActive(blocks ...*FlowBlock) error {
+func ValidateBlocksAreActive(blocks ...*FlowBlock) error {
 	if len(blocks) == 0 {
 		return errors.New("no blocks provided")
 	}
