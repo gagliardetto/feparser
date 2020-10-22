@@ -28,6 +28,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 
 	{
 		fePackage.ID = FormatCodeQlName("package-" + pk.Path)
+		fePackage.ClassName = FormatCodeQlName(pk.Path)
 		fePackage.PkgPath = scanner.RemoveGoSrcClonePath(pk.Path)
 		fePackage.PkgName = pk.Name
 
@@ -111,9 +112,11 @@ type CodeQlIdentity struct {
 	Identity
 }
 type FEPackage struct {
-	PkgPath string
-	PkgName string
-	ID      string
+	PkgPath    string
+	PkgName    string
+	ID         string
+	ClassName  string
+	IsStandard bool
 
 	Module           *Module
 	Funcs            []*FEFunc
