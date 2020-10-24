@@ -142,7 +142,6 @@ func scanModule(mod *packages.Module) *Module {
 type Module struct {
 	Path      string
 	Version   string
-	Root      string
 	GoVersion string
 	Time      *time.Time
 	Main      bool
