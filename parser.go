@@ -27,7 +27,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 	fePackage.Module = scanModule(pk.Module)
 
 	{
-		fePackage.ID = FormatCodeQlName("package-" + pk.Path)
+		fePackage.ID = FormatID("package", pk.Path)
 		fePackage.ClassName = FormatCodeQlName(pk.Path)
 		fePackage.PkgPath = scanner.RemoveGoSrcClonePath(pk.Path)
 		fePackage.PkgName = pk.Name
@@ -466,7 +466,7 @@ func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMetho
 		}
 	}
 
-	fe.ID = FormatCodeQlName("type-method-" + fe.Receiver.TypeName + "-" + methodFuncName)
+	fe.ID = FormatID("type", "method", fe.Receiver.TypeName, methodFuncName)
 	fe.ClassName = FormatCodeQlName(fe.Receiver.TypeName + "-" + methodFuncName)
 
 	{
@@ -503,7 +503,7 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 	{
 		fe.Receiver.original = it.GetType()
 		fe.Receiver.TypeName = it.Name
-		fe.Receiver.QualifiedName = scanner.StringRemoveGoPath(feFunc.PkgPath) + "." + feFunc.Name
+		fe.Receiver.QualifiedName = scanner.StringRemoveGoPath(feFunc.PkgPath) + "." + it.Name
 		fe.Receiver.PkgPath = scanner.StringRemoveGoPath(feFunc.PkgPath)
 		fe.Receiver.PkgName = feFunc.PkgName
 	}
@@ -520,7 +520,7 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 		fe.Func = feFunc
 	}
 
-	fe.ID = FormatCodeQlName("interface-method-" + fe.Receiver.TypeName + "-" + methodFuncName)
+	fe.ID = FormatID("interface", "method", fe.Receiver.TypeName, methodFuncName)
 	fe.ClassName = FormatCodeQlName(fe.Receiver.TypeName + "-" + methodFuncName)
 
 	{
@@ -557,6 +557,14 @@ type IdentityGetter func(block *FlowBlock) ([]*CodeQlIdentity, []*CodeQlIdentity
 
 func FormatCodeQlName(name string) string {
 	return ToCamel(strings.ReplaceAll(name, "\"", ""))
+}
+func FormatID(parts ...string) string {
+	var outComponents []string
+
+	for _, part := range parts {
+		outComponents = append(outComponents, ToCamel(strings.ReplaceAll(part, "\"", "")))
+	}
+	return strings.Join(outComponents, "-")
 }
 
 func ValidateBlocksAreActive(blocks ...*FlowBlock) error {
@@ -670,7 +678,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 	fe.ClassName = FormatCodeQlName(fn.Name)
 	fe.Name = fn.Name
 	fe.PkgName = fn.PkgName
-	fe.ID = FormatCodeQlName("function-" + fn.Name)
+	fe.ID = FormatID("function", fn.Name)
 	fe.Documentation = getDocumentation(fn.Docs)
 	fe.Signature = RemoveThisPackagePathFromSignature(fn.Signature, fn.PkgPath)
 	fe.PkgPath = fn.PkgPath
@@ -766,11 +774,11 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 		}
 	}
 
-	fe.ID = FormatCodeQlName("struct-" + fe.TypeName)
+	fe.ID = FormatID("struct", fe.TypeName)
 	for _, field := range st.Fields {
 		feField := FEField{}
 		feField.FEType = getFEType(field.Type)
-		feField.ID = FormatCodeQlName("struct-field-" + fe.TypeName + "-" + feField.VarName)
+		feField.ID = FormatID("struct", "field", fe.TypeName, feField.VarName)
 		feField.Documentation = getDocumentation(field.Docs)
 		fe.Fields = append(fe.Fields, &feField)
 	}
