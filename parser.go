@@ -449,7 +449,7 @@ func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMetho
 					sameFuncName := methodFuncName == mtFn.Name
 
 					if sameReceiverType && sameFuncName {
-						fe.Documentation = DocumentationWithDefault(mtFn.Docs)
+						fe.Documentation = getDocumentation(mtFn.Docs)
 						fe.Func = getFEFunc(mtFn)
 						fe.Func.CodeQL = nil
 						fe.original = mtFn.GetType()
@@ -516,7 +516,7 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 		fe.IsOnPtr = true
 	}
 	{
-		fe.Documentation = DocumentationWithDefault(methodFunc.Docs)
+		fe.Documentation = getDocumentation(methodFunc.Docs)
 		fe.Func = feFunc
 	}
 
@@ -671,7 +671,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 	fe.Name = fn.Name
 	fe.PkgName = fn.PkgName
 	fe.ID = FormatCodeQlName("function-" + fn.Name)
-	fe.Documentation = DocumentationWithDefault(fn.Docs)
+	fe.Documentation = getDocumentation(fn.Docs)
 	fe.Signature = RemoveThisPackagePathFromSignature(fn.Signature, fn.PkgPath)
 	fe.PkgPath = fn.PkgPath
 	for i, in := range fn.Input {
@@ -739,7 +739,7 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 	// or they are in another package (and they are not a problem now).
 	var fe FEStruct
 	fe.Fields = make([]*FEField, 0)
-	fe.Documentation = DocumentationWithDefault(st.Docs)
+	fe.Documentation = getDocumentation(st.Docs)
 
 	fe.original = st
 
@@ -771,7 +771,7 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 		feField := FEField{}
 		feField.FEType = getFEType(field.Type)
 		feField.ID = FormatCodeQlName("struct-field-" + fe.TypeName + "-" + feField.VarName)
-		feField.Documentation = DocumentationWithDefault(field.Docs)
+		feField.Documentation = getDocumentation(field.Docs)
 		fe.Fields = append(fe.Fields, &feField)
 	}
 
@@ -788,22 +788,19 @@ type FEStruct struct {
 }
 
 type Documentation struct {
-	Docs     []string
-	Comments []string
+	Docs     []string `json:",omitempty"`
+	Comments []string `json:",omitempty"`
 }
 
-func DocumentationWithDefault(docs scanner.Docs) Documentation {
-	d := Documentation{
-		Docs:     make([]string, 0),
-		Comments: make([]string, 0),
-	}
+func getDocumentation(docs scanner.Docs) Documentation {
+	out := Documentation{}
 	if docs.Doc != nil {
-		d.Docs = docs.Doc
+		out.Docs = docs.Doc
 	}
 	if docs.Comment != nil {
-		d.Comments = docs.Comment
+		out.Comments = docs.Comment
 	}
-	return d
+	return out
 }
 
 type FEField struct {
