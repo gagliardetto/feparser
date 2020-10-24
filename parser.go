@@ -153,10 +153,10 @@ type FEFunc struct {
 	ClassName string
 	Signature string
 	ID        string
-	Docs      []string
-	Name      string
-	PkgPath   string
-	PkgName   string
+	Documentation
+	Name    string
+	PkgPath string
+	PkgName string
 
 	Parameters []*FEType
 	Results    []*FEType
@@ -165,13 +165,6 @@ type FEFunc struct {
 
 func (v *FEFunc) GetOriginal() *scanner.Func {
 	return v.original
-}
-
-func DocsWithDefault(docs []string) []string {
-	if docs == nil {
-		docs = make([]string, 0)
-	}
-	return docs
 }
 
 type Element string
@@ -185,12 +178,12 @@ const (
 type FETypeMethod struct {
 	CodeQL    *CodeQlFinalVals
 	ClassName string
-	Docs      []string
-	IsOnPtr   bool
-	Receiver  *FEReceiver
-	ID        string
-	Func      *FEFunc
-	original  types.Type
+	Documentation
+	IsOnPtr  bool
+	Receiver *FEReceiver
+	ID       string
+	Func     *FEFunc
+	original types.Type
 }
 
 func (v *FETypeMethod) GetOriginal() types.Type {
@@ -317,8 +310,10 @@ func (obj *Identity) Validate() error {
 }
 
 type FEType struct {
-	Identity      *CodeQlIdentity `json:",omitempty"`
-	VarName       string          `json:",omitempty"`
+	Identity *CodeQlIdentity `json:",omitempty"`
+	Documentation
+
+	VarName       string `json:",omitempty"`
 	TypeName      string
 	PkgName       string `json:",omitempty"`
 	PkgPath       string `json:",omitempty"`
@@ -404,7 +399,6 @@ func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMetho
 	var fe FETypeMethod
 
 	fe.CodeQL = NewCodeQlFinalVals()
-	fe.Docs = make([]string, 0)
 
 	fe.Receiver = &FEReceiver{}
 	fe.Receiver.Identity = &CodeQlIdentity{
@@ -456,7 +450,7 @@ func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMetho
 					sameFuncName := methodFuncName == mtFn.Name
 
 					if sameReceiverType && sameFuncName {
-						fe.Docs = DocsWithDefault(mtFn.Doc)
+						fe.Documentation = DocumentationWithDefault(mtFn.Docs)
 						fe.Func = getFEFunc(mtFn)
 						fe.Func.CodeQL = nil
 						fe.original = mtFn.GetType()
@@ -523,7 +517,7 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 		fe.IsOnPtr = true
 	}
 	{
-		fe.Docs = DocsWithDefault(methodFunc.Doc)
+		fe.Documentation = DocumentationWithDefault(methodFunc.Docs)
 		fe.Func = feFunc
 	}
 
@@ -678,7 +672,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 	fe.Name = fn.Name
 	fe.PkgName = fn.PkgName
 	fe.ID = FormatCodeQlName("function-" + fn.Name)
-	fe.Docs = DocsWithDefault(fn.Doc)
+	fe.Documentation = DocumentationWithDefault(fn.Docs)
 	fe.Signature = RemoveThisPackagePathFromSignature(fn.Signature, fn.PkgPath)
 	fe.PkgPath = fn.PkgPath
 	for i, in := range fn.Input {
@@ -745,7 +739,8 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 	// TODO: don't scan embedded structs; either they are in this package (and I'll find them in this list),
 	// or they are in another package (and they are not a problem now).
 	var fe FEStruct
-	fe.Fields = make([]*FEType, 0)
+	fe.Fields = make([]*FEField, 0)
+	fe.Documentation = DocumentationWithDefault(st.Docs)
 
 	fe.original = st
 
@@ -774,7 +769,11 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 
 	fe.ID = FormatCodeQlName("struct-" + fe.TypeName)
 	for _, field := range st.Fields {
-		fe.Fields = append(fe.Fields, getFEType(field.Type))
+		feField := FEField{}
+		feField.FEType = getFEType(field.Type)
+		feField.ID = FormatCodeQlName("struct-field-" + fe.TypeName + "-" + feField.VarName)
+		feField.Documentation = DocumentationWithDefault(field.Docs)
+		fe.Fields = append(fe.Fields, &feField)
 	}
 
 	return &fe
@@ -783,9 +782,35 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 type FEStruct struct {
 	*FEType
 
-	ID       string
-	Fields   []*FEType
+	ID string
+	Documentation
+	Fields   []*FEField
 	original *scanner.Struct
+}
+
+type Documentation struct {
+	Docs     []string
+	Comments []string
+}
+
+func DocumentationWithDefault(docs scanner.Docs) Documentation {
+	d := Documentation{
+		Docs:     make([]string, 0),
+		Comments: make([]string, 0),
+	}
+	if docs.Doc != nil {
+		d.Docs = docs.Doc
+	}
+	if docs.Comment != nil {
+		d.Comments = docs.Comment
+	}
+	return d
+}
+
+type FEField struct {
+	*FEType
+	ID string
+	Documentation
 }
 
 func (v *FEStruct) GetOriginal() *scanner.Struct {
