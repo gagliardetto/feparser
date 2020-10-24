@@ -151,7 +151,7 @@ type FEFunc struct {
 	CodeQL    *CodeQlFinalVals
 	ClassName string
 	Signature string
-	ID        string
+	ID        string `json:",omitempty"` // NOTE: no ID for methods (on interfaces, on types); only funcs have a complete ID.
 	Documentation
 	Name    string
 	PkgPath string
@@ -451,6 +451,7 @@ func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMetho
 					if sameReceiverType && sameFuncName {
 						fe.Documentation = getDocumentation(mtFn.Docs)
 						fe.Func = getFEFunc(mtFn)
+						fe.Func.ID = ""
 						fe.Func.CodeQL = nil
 						fe.original = mtFn.GetType()
 						return true
@@ -499,6 +500,7 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 	}
 
 	feFunc := getFEFunc(methodFunc)
+	feFunc.ID = ""
 	feFunc.CodeQL = nil
 	{
 		fe.Receiver.original = it.GetType()
