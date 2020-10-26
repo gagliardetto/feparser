@@ -79,7 +79,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 	})
 	// Sort structs by name:
 	sort.Slice(fePackage.Structs, func(i, j int) bool {
-		return fePackage.Structs[i].TypeName < fePackage.Structs[j].TypeName
+		return fePackage.Structs[i].TypeString < fePackage.Structs[j].TypeString
 	})
 
 	{ // Deduplicate:
@@ -96,7 +96,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		}).([]*FEInterfaceMethod)
 
 		fePackage.Structs = DeduplicateSlice(fePackage.Structs, func(i int) string {
-			return fePackage.Structs[i].QualifiedName
+			return fePackage.Structs[i].TypeString
 		}).([]*FEStruct)
 	}
 	return fePackage, nil
@@ -779,13 +779,18 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 	{
 		// TODO: ignore anonymous structs?
 		anon := st.AnonymousType
-		if anon != nil {
+		if anon != nil && st.AnonymousType.String() != "" {
 			fe.TypeName = st.AnonymousType.String()
 		}
 	}
 
 	// Get basic type info:
-	fe.FEType = getFEType(st.BaseType, fe.PkgPath)
+	{
+		fe.IsStruct = st.IsStruct() // always true
+
+		fe.TypeString = types.TypeString(st.GetType(), RelativeTo(fe.PkgPath))
+		fe.KindString = FormatKindString(st.GetType())
+	}
 
 	fe.ID = FormatID("struct", fe.TypeName)
 	for _, field := range st.Fields {
