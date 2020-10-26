@@ -151,7 +151,7 @@ type FEFunc struct {
 	CodeQL    *CodeQlFinalVals
 	ClassName string
 	Signature string
-	ID        string `json:",omitempty"` // NOTE: no ID for methods (on interfaces, on types); only funcs have a complete ID.
+	ID        string `json:",omitempty"` // NOTE: no ID for funcs in methods (on interfaces, on types); only funcs have a complete ID.
 	Documentation
 	Name    string
 	PkgPath string
@@ -331,7 +331,7 @@ func (v *FEType) GetOriginal() scanner.Type {
 	return v.original
 }
 
-func getFEType(tp scanner.Type) *FEType {
+func getFEType(tp scanner.Type, pkgPath string) *FEType {
 	var fe FEType
 	fe.original = tp
 
@@ -343,9 +343,9 @@ func getFEType(tp scanner.Type) *FEType {
 
 	sl, ok := tp.GetType().(*types.Slice)
 	if tp.IsVariadic() && ok {
-		fe.TypeString = "..." + sl.Elem().String()
+		fe.TypeString = "..." + types.TypeString(sl.Elem(), RelativeTo(pkgPath))
 	} else {
-		fe.TypeString = tp.GetType().String()
+		fe.TypeString = types.TypeString(tp.GetType(), RelativeTo(pkgPath))
 	}
 	fe.KindString = FormatKindString(tp.GetType())
 
@@ -417,6 +417,15 @@ func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMetho
 			named = ptr.Elem().(*types.Named)
 		} else {
 			named = mt.Recv().(*types.Named)
+		}
+		fe.Receiver.IsPtr = isPtr
+		{
+			// TODO:
+			//fe.Receiver.IsVariadic = tp.IsVariadic()
+			//fe.Receiver.IsNullable = tp.IsNullable()
+			//fe.Receiver.IsPtr = tp.IsPtr()
+			//fe.Receiver.IsStruct = tp.IsStruct()
+			//fe.Receiver.IsBasic = tp.IsBasic()
 		}
 		fe.Receiver.original = named
 		fe.Receiver.TypeName = named.Obj().Name()
@@ -685,7 +694,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 	fe.Signature = RemoveThisPackagePathFromSignature(fn.Signature, fn.PkgPath)
 	fe.PkgPath = fn.PkgPath
 	for i, in := range fn.Input {
-		v := getFEType(in)
+		v := getFEType(in, fn.PkgPath)
 
 		placeholder := Sf("isParameter(%v)", i)
 		if v.IsVariadic {
@@ -710,7 +719,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 		fe.Parameters = append(fe.Parameters, v)
 	}
 	for i, out := range fn.Output {
-		v := getFEType(out)
+		v := getFEType(out, fn.PkgPath)
 
 		placeholder := Sf("isResult(%v)", i)
 		if len(fn.Output) == 1 {
@@ -747,19 +756,18 @@ func RemoveThisPackagePathFromSignature(signature string, pkgPath string) string
 func scanStruct(st *scanner.Struct) *FEStruct {
 	// TODO: don't scan embedded structs; either they are in this package (and I'll find them in this list),
 	// or they are in another package (and they are not a problem now).
-	var fe FEStruct
+	var fe = FEStruct{
+		FEType: &FEType{},
+	}
 	fe.Fields = make([]*FEField, 0)
 	fe.Documentation = getDocumentation(st.Docs)
 
 	fe.original = st
 
-	// Get basic type info:
-	fe.FEType = getFEType(st.BaseType)
-
 	// Get more type info:
 	{
 		named := st.Type
-		if named != nil {
+		if named != nil && named.Obj() != nil {
 			fe.TypeName = named.Obj().Name()
 			if pkg := named.Obj().Pkg(); pkg != nil {
 				fe.QualifiedName = scanner.StringRemoveGoPath(pkg.Path()) + "." + named.Obj().Name()
@@ -776,10 +784,13 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 		}
 	}
 
+	// Get basic type info:
+	fe.FEType = getFEType(st.BaseType, fe.PkgPath)
+
 	fe.ID = FormatID("struct", fe.TypeName)
 	for _, field := range st.Fields {
 		feField := FEField{}
-		feField.FEType = getFEType(field.Type)
+		feField.FEType = getFEType(field.Type, fe.PkgPath)
 		feField.ID = FormatID("struct", "field", fe.TypeName, feField.VarName)
 		feField.Documentation = getDocumentation(field.Docs)
 		fe.Fields = append(fe.Fields, &feField)
@@ -821,4 +832,18 @@ type FEField struct {
 
 func (v *FEStruct) GetOriginal() *scanner.Struct {
 	return v.original
+}
+
+// RelativeTo returns a Qualifier that fully qualifies members of
+// all packages other than pkg.
+func RelativeTo(pkgPath string) types.Qualifier {
+	if pkgPath == "" {
+		return nil
+	}
+	return func(other *types.Package) string {
+		if pkgPath == other.Path() {
+			return "" // same package; unqualified
+		}
+		return other.Path()
+	}
 }
