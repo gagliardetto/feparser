@@ -246,6 +246,18 @@ func (v *FETypeMethod) GetOriginal() types.Type {
 
 type FEInterfaceMethod FETypeMethod
 
+//
+func (v *FEInterfaceMethod) Len() int {
+	return FEIToFET(v).Len()
+}
+
+// GetRelativeElement: provided an absolute index, the GetRelativeElement function
+// returns the element it corresponds to, along with the relative index
+// of that kind of element.
+func (v *FEInterfaceMethod) GetRelativeElement(index int) (interface{}, int, error) {
+	return FEIToFET(v).GetRelativeElement(index)
+}
+
 type FEReceiver struct {
 	FEType
 	original types.Type
