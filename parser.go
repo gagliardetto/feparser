@@ -162,6 +162,31 @@ type FEFunc struct {
 	original   *scanner.Func
 }
 
+//
+func (v *FEFunc) Len() int {
+	return len(v.Parameters) + len(v.Results)
+}
+
+// GetRelativeElement: provided an absolute index, the GetRelativeElement function
+// returns the element it corresponds to, along with the relative index
+// of that kind of element.
+func (v *FEFunc) GetRelativeElement(index int) (interface{}, int, error) {
+	if index >= v.Len() {
+		return nil, 0, errors.New("index outside of bounds")
+	}
+	// Is it a parameter?
+	if index < len(v.Parameters) {
+		relIndex := index
+		return v.Parameters[relIndex], relIndex, nil
+	}
+	// Is it a result?
+	if index >= len(v.Parameters) {
+		relIndex := index - (len(v.Parameters))
+		return v.Results[relIndex], relIndex, nil
+	}
+	return nil, 0, errors.New("nothing selected")
+}
+
 func (v *FEFunc) GetOriginal() *scanner.Func {
 	return v.original
 }
@@ -183,6 +208,36 @@ type FETypeMethod struct {
 	ID       string
 	Func     *FEFunc
 	original types.Type
+}
+
+//
+func (v *FETypeMethod) Len() int {
+	l := 1 + len(v.Func.Parameters) + len(v.Func.Results)
+	return l
+}
+
+// GetRelativeElement: provided an absolute index, the GetRelativeElement function
+// returns the element it corresponds to, along with the relative index
+// of that kind of element.
+func (v *FETypeMethod) GetRelativeElement(index int) (interface{}, int, error) {
+	if index >= v.Len() {
+		return nil, 0, errors.New("index outside of bounds")
+	}
+	// Is it the receiver?
+	if index == 0 {
+		return v.Receiver, 0, nil
+	}
+	// Is it a parameter?
+	if index > 0 && index < 1+len(v.Func.Parameters) {
+		relIndex := index - 1
+		return v.Func.Parameters[relIndex], relIndex, nil
+	}
+	// Is it a result?
+	if index >= 1+len(v.Func.Parameters) {
+		relIndex := index - (1 + len(v.Func.Parameters))
+		return v.Func.Results[relIndex], relIndex, nil
+	}
+	return nil, 0, errors.New("nothing selected")
 }
 
 func (v *FETypeMethod) GetOriginal() types.Type {
