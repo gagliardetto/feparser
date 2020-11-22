@@ -584,6 +584,9 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 		fe.Receiver.QualifiedName = scanner.StringRemoveGoPath(feFunc.PkgPath) + "." + it.Name
 		fe.Receiver.PkgPath = scanner.StringRemoveGoPath(feFunc.PkgPath)
 		fe.Receiver.PkgName = feFunc.PkgName
+
+		fe.Receiver.TypeString = it.TypesVar.Name()
+		fe.Receiver.KindString = FormatKindString(it.TypesVar.Type())
 	}
 
 	fe.Func = &FEFunc{}
