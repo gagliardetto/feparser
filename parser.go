@@ -41,7 +41,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 			}
 		}
 		for _, mt := range pk.Methods {
-			meth := getFETypeMethod(mt, pk.Funcs)
+			meth := getFETypeMethod(fePackage.PkgPath, mt, pk.Funcs)
 			if meth != nil {
 				fePackage.TypeMethods = append(fePackage.TypeMethods, meth)
 			}
@@ -461,7 +461,7 @@ func getFEType(tp scanner.Type, pkgPath string) *FEType {
 	return &fe
 }
 
-func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMethod {
+func getFETypeMethod(pkgPath string, mt *types.Selection, allFuncs []*scanner.Func) *FETypeMethod {
 	var fe FETypeMethod
 
 	fe.CodeQL = NewCodeQlFinalVals()
@@ -474,7 +474,8 @@ func getFETypeMethod(mt *types.Selection, allFuncs []*scanner.Func) *FETypeMetho
 			Index:   -1,
 		},
 	}
-	fe.Receiver.TypeString = mt.Recv().String()
+
+	fe.Receiver.TypeString = types.TypeString(mt.Recv(), RelativeTo(pkgPath))
 	fe.Receiver.KindString = FormatKindString(mt.Recv())
 
 	{
