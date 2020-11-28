@@ -22,12 +22,13 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		TypeMethods:      make([]*FETypeMethod, 0),
 		InterfaceMethods: make([]*FEInterfaceMethod, 0),
 		Structs:          make([]*FEStruct, 0),
+		Types:            make([]*FEType, 0),
 	}
 
 	fePackage.Module = scanModule(pk.Module)
 
 	{
-		fePackage.ID = FormatID("package", pk.Path)
+		fePackage.ID = FormatID("Package", pk.Path)
 		fePackage.ClassName = FormatCodeQlName(pk.Path)
 		fePackage.PkgPath = scanner.RemoveGoSrcClonePath(pk.Path)
 		fePackage.PkgName = pk.Name
@@ -53,34 +54,42 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		for _, str := range pk.Structs {
 			fePackage.Structs = append(fePackage.Structs, scanStruct(str))
 		}
+		for _, typ := range pk.Types {
+			fePackage.Types = append(fePackage.Types, getFEType(typ, fePackage.PkgPath))
+		}
 	}
 
-	// Sort funcs by name:
-	sort.Slice(fePackage.Funcs, func(i, j int) bool {
-		return fePackage.Funcs[i].Name < fePackage.Funcs[j].Name
-	})
-	// Sort type methods by receiver:
-	sort.Slice(fePackage.TypeMethods, func(i, j int) bool {
-		// If same receiver...
-		if fePackage.TypeMethods[i].Receiver.QualifiedName == fePackage.TypeMethods[j].Receiver.QualifiedName {
-			// ... sort by func name:
-			return fePackage.TypeMethods[i].Func.Name < fePackage.TypeMethods[j].Func.Name
-		}
-		return fePackage.TypeMethods[i].Receiver.QualifiedName < fePackage.TypeMethods[j].Receiver.QualifiedName
-	})
-	// Sort interface methods by receiver:
-	sort.Slice(fePackage.InterfaceMethods, func(i, j int) bool {
-		// If same receiver...
-		if fePackage.InterfaceMethods[i].Receiver.QualifiedName == fePackage.InterfaceMethods[j].Receiver.QualifiedName {
-			// ... sort by func name:
-			return fePackage.InterfaceMethods[i].Func.Name < fePackage.InterfaceMethods[j].Func.Name
-		}
-		return fePackage.InterfaceMethods[i].Receiver.QualifiedName < fePackage.InterfaceMethods[j].Receiver.QualifiedName
-	})
-	// Sort structs by name:
-	sort.Slice(fePackage.Structs, func(i, j int) bool {
-		return fePackage.Structs[i].TypeString < fePackage.Structs[j].TypeString
-	})
+	{ // Sort funcs by name:
+		sort.Slice(fePackage.Funcs, func(i, j int) bool {
+			return fePackage.Funcs[i].Name < fePackage.Funcs[j].Name
+		})
+		// Sort type methods by receiver:
+		sort.Slice(fePackage.TypeMethods, func(i, j int) bool {
+			// If same receiver...
+			if fePackage.TypeMethods[i].Receiver.QualifiedName == fePackage.TypeMethods[j].Receiver.QualifiedName {
+				// ... sort by func name:
+				return fePackage.TypeMethods[i].Func.Name < fePackage.TypeMethods[j].Func.Name
+			}
+			return fePackage.TypeMethods[i].Receiver.QualifiedName < fePackage.TypeMethods[j].Receiver.QualifiedName
+		})
+		// Sort interface methods by receiver:
+		sort.Slice(fePackage.InterfaceMethods, func(i, j int) bool {
+			// If same receiver...
+			if fePackage.InterfaceMethods[i].Receiver.QualifiedName == fePackage.InterfaceMethods[j].Receiver.QualifiedName {
+				// ... sort by func name:
+				return fePackage.InterfaceMethods[i].Func.Name < fePackage.InterfaceMethods[j].Func.Name
+			}
+			return fePackage.InterfaceMethods[i].Receiver.QualifiedName < fePackage.InterfaceMethods[j].Receiver.QualifiedName
+		})
+		// Sort structs by name:
+		sort.Slice(fePackage.Structs, func(i, j int) bool {
+			return fePackage.Structs[i].TypeString < fePackage.Structs[j].TypeString
+		})
+		// Sort types by name:
+		sort.Slice(fePackage.Types, func(i, j int) bool {
+			return fePackage.Types[i].TypeString < fePackage.Types[j].TypeString
+		})
+	}
 
 	{ // Deduplicate:
 		fePackage.Funcs = DeduplicateSlice(fePackage.Funcs, func(i int) string {
@@ -98,6 +107,10 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		fePackage.Structs = DeduplicateSlice(fePackage.Structs, func(i int) string {
 			return fePackage.Structs[i].TypeString
 		}).([]*FEStruct)
+
+		fePackage.Types = DeduplicateSlice(fePackage.Types, func(i int) string {
+			return fePackage.Types[i].TypeString
+		}).([]*FEType)
 	}
 	return fePackage, nil
 }
@@ -123,6 +136,7 @@ type FEPackage struct {
 	TypeMethods      []*FETypeMethod
 	InterfaceMethods []*FEInterfaceMethod
 	Structs          []*FEStruct
+	Types            []*FEType
 }
 
 func scanModule(mod *packages.Module) *Module {
@@ -378,20 +392,26 @@ func (obj *Identity) Validate() error {
 type FEType struct {
 	Identity *CodeQlIdentity `json:",omitempty"`
 	Documentation
+	Is *Is `json:",omitempty"`
 
+	ID            string `json:",omitempty"` // NOTE: no ID for funcs in methods (on interfaces, on types); only funcs have a complete ID.
 	VarName       string `json:",omitempty"`
 	TypeName      string
 	PkgName       string `json:",omitempty"`
 	PkgPath       string `json:",omitempty"`
 	QualifiedName string `json:",omitempty"`
-	IsPtr         bool
-	IsBasic       bool
-	IsVariadic    bool
-	IsNullable    bool
-	IsStruct      bool
-	TypeString    string
-	KindString    string
-	original      scanner.Type
+
+	TypeString string
+	KindString string
+	original   scanner.Type
+}
+
+type Is struct {
+	Ptr      bool
+	Basic    bool
+	Variadic bool
+	Nullable bool
+	Struct   bool
 }
 
 func (v *FEType) GetOriginal() scanner.Type {
@@ -399,23 +419,44 @@ func (v *FEType) GetOriginal() scanner.Type {
 }
 
 func getFEType(tp scanner.Type, pkgPath string) *FEType {
-	var fe FEType
+	fe := FEType{
+		Is: &Is{},
+	}
 	fe.original = tp
 
-	fe.IsVariadic = tp.IsVariadic()
-	fe.IsNullable = tp.IsNullable()
-	fe.IsPtr = tp.IsPtr()
-	fe.IsStruct = tp.IsStruct()
-	fe.IsBasic = tp.IsBasic()
+	fe.Is.Variadic = tp.IsVariadic()
+	fe.Is.Nullable = tp.IsNullable()
+	fe.Is.Ptr = tp.IsPtr()
+	fe.Is.Struct = tp.IsStruct()
+	fe.Is.Basic = tp.IsBasic()
 
-	sl, ok := tp.GetType().(*types.Slice)
-	if tp.IsVariadic() && ok {
-		fe.TypeString = "..." + types.TypeString(sl.Elem(), RelativeTo(pkgPath))
-	} else {
-		fe.TypeString = types.TypeString(tp.GetType(), RelativeTo(pkgPath))
+	{
+		sl, ok := tp.GetType().(*types.Slice)
+		if tp.IsVariadic() && ok {
+			fe.TypeString = "..." + types.TypeString(sl.Elem(), RelativeTo(pkgPath))
+		} else {
+			fe.TypeString = types.TypeString(tp.GetType(), RelativeTo(pkgPath))
+		}
 	}
 	fe.KindString = FormatKindString(tp.GetType())
 
+	{
+		named, ok := tp.(*scanner.Named)
+		if ok {
+			fe.TypeString = types.TypeString(named.Type, RelativeTo(pkgPath))
+			if named.Object != nil {
+				fe.Documentation = getDocumentation(named.Docs)
+				fe.TypeName = named.Object.Name()
+				fe.ID = FormatID("Type", named.Object.Name())
+
+				if pkg := named.Object.Pkg(); pkg != nil {
+					fe.QualifiedName = scanner.StringRemoveGoPath(pkg.Path()) + "." + named.Object.Name()
+					fe.PkgPath = scanner.RemoveGoPath(named.Object.Pkg())
+					fe.PkgName = named.Object.Pkg().Name()
+				}
+			}
+		}
+	}
 	if tp.GetTypesVar() != nil {
 		varName := tp.GetTypesVar().Name()
 		if varName != "" {
@@ -467,6 +508,9 @@ func getFETypeMethod(pkgPath string, mt *types.Selection, allFuncs []*scanner.Fu
 	fe.CodeQL = NewCodeQlFinalVals()
 
 	fe.Receiver = &FEReceiver{}
+	fe.Receiver.FEType = FEType{
+		Is: &Is{},
+	}
 	fe.Receiver.Identity = &CodeQlIdentity{
 		Placeholder: "isReceiver()",
 		Identity: Identity{
@@ -486,7 +530,7 @@ func getFETypeMethod(pkgPath string, mt *types.Selection, allFuncs []*scanner.Fu
 		} else {
 			named = mt.Recv().(*types.Named)
 		}
-		fe.Receiver.IsPtr = isPtr
+		fe.Receiver.Is.Ptr = isPtr
 		{
 			// TODO:
 			//fe.Receiver.IsVariadic = tp.IsVariadic()
@@ -544,7 +588,7 @@ func getFETypeMethod(pkgPath string, mt *types.Selection, allFuncs []*scanner.Fu
 		}
 	}
 
-	fe.ID = FormatID("type", "method", fe.Receiver.TypeName, methodFuncName)
+	fe.ID = FormatID("TypeMethod", fe.Receiver.TypeName, methodFuncName)
 	fe.ClassName = FormatCodeQlName(fe.Receiver.TypeName + "-" + methodFuncName)
 
 	{
@@ -568,6 +612,9 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 	fe.CodeQL = NewCodeQlFinalVals()
 
 	fe.Receiver = &FEReceiver{}
+	fe.Receiver.FEType = FEType{
+		Is: &Is{},
+	}
 	fe.Receiver.Identity = &CodeQlIdentity{
 		Placeholder: "isReceiver()",
 		Identity: Identity{
@@ -602,7 +649,7 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 		fe.Func = feFunc
 	}
 
-	fe.ID = FormatID("interface", "method", fe.Receiver.TypeName, methodFuncName)
+	fe.ID = FormatID("InterfaceMethod", fe.Receiver.TypeName, methodFuncName)
 	fe.ClassName = FormatCodeQlName(fe.Receiver.TypeName + "-" + methodFuncName)
 
 	{
@@ -760,7 +807,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 	fe.ClassName = FormatCodeQlName(fn.Name)
 	fe.Name = fn.Name
 	fe.PkgName = fn.PkgName
-	fe.ID = FormatID("function", fn.Name)
+	fe.ID = FormatID("Function", fn.Name)
 	fe.Documentation = getDocumentation(fn.Docs)
 	fe.Signature = RemoveThisPackagePathFromSignature(fn.Signature, fn.PkgPath)
 	fe.PkgPath = fn.PkgPath
@@ -768,7 +815,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 		v := getFEType(in, fn.PkgPath)
 
 		placeholder := Sf("isParameter(%v)", i)
-		if v.IsVariadic {
+		if v.Is.Variadic {
 			if len(fn.Input) == 1 {
 				placeholder = "isParameter(_)"
 			} else {
@@ -776,7 +823,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 			}
 		}
 		isNotLast := i != len(fn.Input)-1
-		if v.IsVariadic && isNotLast {
+		if v.Is.Variadic && isNotLast {
 			panic(Sf("parameter %v is variadic but is NOT the last parameter", v))
 		}
 		v.Identity = &CodeQlIdentity{
@@ -784,7 +831,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 			Identity: Identity{
 				Element:    ElementParameter,
 				Index:      i,
-				IsVariadic: v.IsVariadic,
+				IsVariadic: v.Is.Variadic,
 			},
 		}
 		fe.Parameters = append(fe.Parameters, v)
@@ -801,7 +848,7 @@ func getFEFunc(fn *scanner.Func) *FEFunc {
 			Identity: Identity{
 				Element:    ElementResult,
 				Index:      i,
-				IsVariadic: v.IsVariadic,
+				IsVariadic: v.Is.Variadic,
 			},
 		}
 		fe.Results = append(fe.Results, v)
@@ -828,7 +875,9 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 	// TODO: don't scan embedded structs; either they are in this package (and I'll find them in this list),
 	// or they are in another package (and they are not a problem now).
 	var fe = FEStruct{
-		FEType: &FEType{},
+		FEType: &FEType{
+			Is: &Is{},
+		},
 	}
 	fe.Fields = make([]*FEField, 0)
 	fe.Documentation = getDocumentation(st.Docs)
@@ -857,17 +906,17 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 
 	// Get basic type info:
 	{
-		fe.IsStruct = st.IsStruct() // always true
+		fe.Is.Struct = st.IsStruct() // always true
 
 		fe.TypeString = types.TypeString(st.GetType(), RelativeTo(fe.PkgPath))
 		fe.KindString = FormatKindString(st.GetType())
 	}
 
-	fe.ID = FormatID("struct", fe.TypeName)
+	fe.ID = FormatID("Struct", fe.TypeName)
 	for _, field := range st.Fields {
 		feField := FEField{}
 		feField.FEType = getFEType(field.Type, fe.PkgPath)
-		feField.ID = FormatID("struct", "field", fe.TypeName, feField.VarName)
+		feField.ID = FormatID("StructField", fe.TypeName, feField.VarName)
 		feField.Documentation = getDocumentation(field.Docs)
 		fe.Fields = append(fe.Fields, &feField)
 	}
