@@ -432,7 +432,7 @@ func getFEType(tp scanner.Type, pkgPath string) *FEType {
 	fe.Is.Basic = tp.IsBasic()
 
 	{
-		_, ok := tp.(*scanner.Interface)
+		_, ok := tp.GetType().Underlying().(*types.Interface)
 		if ok {
 			fe.Is.Interface = true
 		}
@@ -623,6 +623,8 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 	fe.Receiver.FEType = FEType{
 		Is: &Is{},
 	}
+	fe.Receiver.Is.Interface = true
+
 	fe.Receiver.Identity = &CodeQlIdentity{
 		Placeholder: "isReceiver()",
 		Identity: Identity{
