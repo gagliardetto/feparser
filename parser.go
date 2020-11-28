@@ -407,11 +407,12 @@ type FEType struct {
 }
 
 type Is struct {
-	Ptr      bool
-	Basic    bool
-	Variadic bool
-	Nullable bool
-	Struct   bool
+	Ptr       bool
+	Basic     bool
+	Variadic  bool
+	Nullable  bool
+	Struct    bool
+	Interface bool
 }
 
 func (v *FEType) GetOriginal() scanner.Type {
@@ -429,6 +430,13 @@ func getFEType(tp scanner.Type, pkgPath string) *FEType {
 	fe.Is.Ptr = tp.IsPtr()
 	fe.Is.Struct = tp.IsStruct()
 	fe.Is.Basic = tp.IsBasic()
+
+	{
+		_, ok := tp.(*scanner.Interface)
+		if ok {
+			fe.Is.Interface = true
+		}
+	}
 
 	{
 		sl, ok := tp.GetType().(*types.Slice)
