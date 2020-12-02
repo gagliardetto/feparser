@@ -184,21 +184,21 @@ func (v *FEFunc) Len() int {
 // GetRelativeElement: provided an absolute index, the GetRelativeElement function
 // returns the element it corresponds to, along with the relative index
 // of that kind of element.
-func (v *FEFunc) GetRelativeElement(index int) (interface{}, int, error) {
+func (v *FEFunc) GetRelativeElement(index int) (Element, interface{}, int, error) {
 	if index >= v.Len() {
-		return nil, 0, errors.New("index outside of bounds")
+		return "", nil, 0, errors.New("index outside of bounds")
 	}
 	// Is it a parameter?
 	if index < len(v.Parameters) {
 		relIndex := index
-		return v.Parameters[relIndex], relIndex, nil
+		return ElementParameter, v.Parameters[relIndex], relIndex, nil
 	}
 	// Is it a result?
 	if index >= len(v.Parameters) {
 		relIndex := index - (len(v.Parameters))
-		return v.Results[relIndex], relIndex, nil
+		return ElementResult, v.Results[relIndex], relIndex, nil
 	}
-	return nil, 0, errors.New("nothing selected")
+	return "", nil, 0, errors.New("nothing selected")
 }
 
 func (v *FEFunc) GetOriginal() *scanner.Func {
@@ -233,25 +233,25 @@ func (v *FETypeMethod) Len() int {
 // GetRelativeElement: provided an absolute index, the GetRelativeElement function
 // returns the element it corresponds to, along with the relative index
 // of that kind of element.
-func (v *FETypeMethod) GetRelativeElement(index int) (interface{}, int, error) {
+func (v *FETypeMethod) GetRelativeElement(index int) (Element, interface{}, int, error) {
 	if index >= v.Len() {
-		return nil, 0, errors.New("index outside of bounds")
+		return "", nil, 0, errors.New("index outside of bounds")
 	}
 	// Is it the receiver?
 	if index == 0 {
-		return v.Receiver, 0, nil
+		return ElementReceiver, v.Receiver, 0, nil
 	}
 	// Is it a parameter?
 	if index > 0 && index < 1+len(v.Func.Parameters) {
 		relIndex := index - 1
-		return v.Func.Parameters[relIndex], relIndex, nil
+		return ElementParameter, v.Func.Parameters[relIndex], relIndex, nil
 	}
 	// Is it a result?
 	if index >= 1+len(v.Func.Parameters) {
 		relIndex := index - (1 + len(v.Func.Parameters))
-		return v.Func.Results[relIndex], relIndex, nil
+		return ElementResult, v.Func.Results[relIndex], relIndex, nil
 	}
-	return nil, 0, errors.New("nothing selected")
+	return "", nil, 0, errors.New("nothing selected")
 }
 
 func (v *FETypeMethod) GetOriginal() types.Type {
@@ -268,7 +268,7 @@ func (v *FEInterfaceMethod) Len() int {
 // GetRelativeElement: provided an absolute index, the GetRelativeElement function
 // returns the element it corresponds to, along with the relative index
 // of that kind of element.
-func (v *FEInterfaceMethod) GetRelativeElement(index int) (interface{}, int, error) {
+func (v *FEInterfaceMethod) GetRelativeElement(index int) (Element, interface{}, int, error) {
 	return FEIToFET(v).GetRelativeElement(index)
 }
 
