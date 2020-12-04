@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gagliardetto/codebox/scanner"
+	"github.com/gagliardetto/golang-go/cmd/go/not-internal/search"
 	. "github.com/gagliardetto/utilz"
 	"golang.org/x/tools/go/packages"
 )
@@ -112,6 +113,9 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 			return fePackage.Types[i].TypeString
 		}).([]*FEType)
 	}
+
+	fePackage.IsStandard = search.IsStandardImportPath(fePackage.PkgPath)
+
 	return fePackage, nil
 }
 
