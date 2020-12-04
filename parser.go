@@ -539,6 +539,7 @@ func getFETypeMethod(pkgPath string, mt *types.Selection, allFuncs []*scanner.Fu
 			named = mt.Recv().(*types.Named)
 		}
 		fe.Receiver.Is.Ptr = isPtr
+		fe.Receiver.ID = FormatID("Type", named.Obj().Name())
 		{
 			// TODO:
 			//fe.Receiver.IsVariadic = tp.IsVariadic()
@@ -639,6 +640,7 @@ func getFEInterfaceMethod(it *scanner.Interface, methodFunc *scanner.Func) *FETy
 	{
 		fe.Receiver.original = it.GetType()
 		fe.Receiver.TypeName = it.Name
+		fe.Receiver.ID = FormatID("Type", it.Name)
 		fe.Receiver.QualifiedName = scanner.StringRemoveGoPath(feFunc.PkgPath) + "." + it.Name
 		fe.Receiver.PkgPath = scanner.StringRemoveGoPath(feFunc.PkgPath)
 		fe.Receiver.PkgName = feFunc.PkgName
