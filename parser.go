@@ -185,6 +185,11 @@ func (v *FEFunc) Len() int {
 	return len(v.Parameters) + len(v.Results)
 }
 
+//
+func (v *FEFunc) Lengths() (int, int, int) {
+	return 0, len(v.Parameters), len(v.Results)
+}
+
 // GetRelativeElement: provided an absolute index, the GetRelativeElement function
 // returns the element it corresponds to, along with the relative index
 // of that kind of element.
@@ -234,6 +239,11 @@ func (v *FETypeMethod) Len() int {
 	return l
 }
 
+//
+func (v *FETypeMethod) Lengths() (int, int, int) {
+	return 1, len(v.Func.Parameters), len(v.Func.Results)
+}
+
 // GetRelativeElement: provided an absolute index, the GetRelativeElement function
 // returns the element it corresponds to, along with the relative index
 // of that kind of element.
@@ -267,6 +277,11 @@ type FEInterfaceMethod FETypeMethod
 //
 func (v *FEInterfaceMethod) Len() int {
 	return FEIToFET(v).Len()
+}
+
+//
+func (v *FEInterfaceMethod) Lengths() (int, int, int) {
+	return FEIToFET(v).Lengths()
 }
 
 // GetRelativeElement: provided an absolute index, the GetRelativeElement function
