@@ -1005,7 +1005,7 @@ func LowerCaseFirst(str string) string {
 	}
 	return ""
 }
-func NewLowerTitleCodeQlName(elems ...string) string {
+func NewLowerTitleName(elems ...string) string {
 	return LowerCaseFirst(NewCodeQlName(elems...))
 }
 func NewCodeQlName(elems ...string) string {
