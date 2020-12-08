@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gagliardetto/codebox/scanner"
 	"github.com/gagliardetto/golang-go/cmd/go/not-internal/search"
@@ -361,13 +361,6 @@ func FEIToFET(feIt *FEInterfaceMethod) *FETypeMethod {
 	return &converted
 }
 
-// ShouldUseAlias tells whether the package name and the base
-// of the backage path are the same; if they are not,
-// then the package should use an alias in the import.
-func ShouldUseAlias(pkgPath string, pkgName string) bool {
-	return filepath.Base(pkgPath) != pkgName
-}
-
 const TODO = "TODO"
 
 type CodeQLPointers struct {
@@ -715,18 +708,6 @@ type FlowBlock struct {
 
 type IdentityGetter func(block *FlowBlock) ([]*CodeQlIdentity, []*CodeQlIdentity, error)
 
-func FormatCodeQlName(name string) string {
-	return ToCamel(strings.ReplaceAll(name, "\"", ""))
-}
-func FormatID(parts ...string) string {
-	var outComponents []string
-
-	for _, part := range parts {
-		outComponents = append(outComponents, ToCamel(strings.ReplaceAll(part, "\"", "")))
-	}
-	return strings.Join(outComponents, "-")
-}
-
 func ValidateBlocksAreActive(blocks ...*FlowBlock) error {
 	if len(blocks) == 0 {
 		return errors.New("no blocks provided")
@@ -1002,4 +983,31 @@ func RelativeTo(pkgPath string) types.Qualifier {
 		}
 		return other.Path()
 	}
+}
+
+func FormatCodeQlName(name string) string {
+	return ToCamel(strings.ReplaceAll(name, "\"", ""))
+}
+func FormatID(parts ...string) string {
+	var outComponents []string
+
+	for _, part := range parts {
+		outComponents = append(outComponents, ToCamel(strings.ReplaceAll(part, "\"", "")))
+	}
+	return strings.Join(outComponents, "-")
+}
+func JoinDash(elems ...string) string {
+	return strings.Join(elems, "-")
+}
+func LowerCaseFirst(str string) string {
+	for i, v := range str {
+		return string(unicode.ToLower(v)) + str[i+1:]
+	}
+	return ""
+}
+func NewLowerTitleCodeQlName(elems ...string) string {
+	return LowerCaseFirst(NewCodeQlName(elems...))
+}
+func NewCodeQlName(elems ...string) string {
+	return FormatCodeQlName(JoinDash(elems...))
 }
