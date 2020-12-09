@@ -504,6 +504,13 @@ func getFEType(tp scanner.Type, pkgPath string) *FEType {
 					fe.PkgPath = scanner.RemoveGoPath(named.Object.Pkg())
 					fe.PkgName = named.Object.Pkg().Name()
 				}
+			} else {
+				fe.TypeName = named.Name
+				fe.ID = FormatID("Type", named.Name)
+
+				fe.QualifiedName = scanner.StringRemoveGoPath(named.Path) + "." + named.Name
+				fe.PkgPath = scanner.StringRemoveGoPath(named.Path)
+				//fe.PkgName = named.Object.Pkg().Name()
 			}
 		}
 	}
