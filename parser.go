@@ -43,7 +43,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 			}
 		}
 		for _, mt := range pk.Methods {
-			meth := getFETypeMethod(fePackage.PkgPath, mt, pk.Funcs)
+			meth := getFETypeMethod(fePackage.PkgPath, mt)
 			if meth != nil {
 				fePackage.TypeMethods = append(fePackage.TypeMethods, meth)
 			}
@@ -53,7 +53,7 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 		}
 
 		for _, str := range pk.Structs {
-			fePackage.Structs = append(fePackage.Structs, scanStruct(str))
+			fePackage.Structs = append(fePackage.Structs, scanStruct(str, fePackage.PkgPath))
 		}
 		for _, typ := range pk.Types {
 			fePackage.Types = append(fePackage.Types, getFEType(typ, fePackage.PkgPath))
@@ -479,14 +479,23 @@ func getFEType(tp scanner.Type, pkgPath string) *FEType {
 			fe.TypeString = types.TypeString(tp.GetType(), RelativeTo(pkgPath))
 		}
 	}
+	if fe.TypeString == "" {
+		fe.TypeString = types.TypeString(tp.GetType(), RelativeTo(pkgPath))
+	}
+	{
+		named, ok := tp.GetType().(*types.Named)
+		if ok {
+			fe.TypeName = named.Obj().Name()
+		}
+	}
 	fe.KindString = FormatKindString(tp.GetType())
 
 	{
 		named, ok := tp.(*scanner.Named)
 		if ok {
 			fe.TypeString = types.TypeString(named.Type, RelativeTo(pkgPath))
+			fe.Documentation = getDocumentation(named.Docs)
 			if named.Object != nil {
-				fe.Documentation = getDocumentation(named.Docs)
 				fe.TypeName = named.Object.Name()
 				fe.ID = FormatID("Type", named.Object.Name())
 
@@ -543,7 +552,7 @@ func getFEType(tp scanner.Type, pkgPath string) *FEType {
 	return &fe
 }
 
-func getFETypeMethod(pkgPath string, mt *types.Selection, allFuncs []*scanner.Func) *FETypeMethod {
+func getFETypeMethod(pkgPath string, mt *scanner.Func) *FETypeMethod {
 	var fe FETypeMethod
 
 	fe.CodeQL = NewCodeQlFinalVals()
@@ -560,16 +569,16 @@ func getFETypeMethod(pkgPath string, mt *types.Selection, allFuncs []*scanner.Fu
 		},
 	}
 
-	fe.Receiver.TypeString = types.TypeString(mt.Recv(), RelativeTo(pkgPath))
-	fe.Receiver.KindString = FormatKindString(mt.Recv())
+	fe.Receiver.TypeString = types.TypeString(mt.Receiver.GetType(), RelativeTo(pkgPath))
+	fe.Receiver.KindString = FormatKindString(mt.Receiver.GetType())
 
 	{
 		var named *types.Named
-		ptr, isPtr := mt.Recv().(*types.Pointer)
+		ptr, isPtr := mt.Receiver.GetType().(*types.Pointer)
 		if isPtr {
 			named = ptr.Elem().(*types.Named)
 		} else {
-			named = mt.Recv().(*types.Named)
+			named = mt.Receiver.GetType().(*types.Named)
 		}
 		fe.Receiver.Is.Ptr = isPtr
 		fe.Receiver.ID = FormatID("Type", named.Obj().Name())
@@ -594,39 +603,28 @@ func getFETypeMethod(pkgPath string, mt *types.Selection, allFuncs []*scanner.Fu
 	}
 
 	fe.Func = &FEFunc{}
-	methodFuncName := mt.Obj().Name()
+	methodFuncName := mt.Name
 
 	{
 		// Check if the method is on a pointer of a value:
-		_, isPtr := mt.Obj().Type().(*types.Signature).Recv().Type().(*types.Pointer)
+		_, isPtr := mt.Receiver.GetTypesVar().Type().(*types.Pointer)
 		if isPtr {
 			fe.IsOnPtr = true
 		}
 	}
 	{
-		findCorrespondingFunc := func() bool {
-			for _, mtFn := range allFuncs {
-				if mtFn.Receiver != nil {
+		if mt.Receiver != nil {
 
-					sameReceiverType := fe.Receiver.QualifiedName == mtFn.Receiver.TypeString()
-					sameFuncName := methodFuncName == mtFn.Name
+			sameReceiverType := fe.Receiver.QualifiedName == mt.Receiver.TypeString()
+			sameFuncName := methodFuncName == mt.Name
 
-					if sameReceiverType && sameFuncName {
-						fe.Documentation = getDocumentation(mtFn.Docs)
-						fe.Func = getFEFunc(mtFn)
-						fe.Func.ID = ""
-						fe.Func.CodeQL = nil
-						fe.original = mtFn.GetType()
-						return true
-					}
-				}
+			if sameReceiverType && sameFuncName {
+				fe.Documentation = getDocumentation(mt.Docs)
+				fe.Func = getFEFunc(mt)
+				fe.Func.ID = ""
+				fe.Func.CodeQL = nil
+				fe.original = mt.GetType()
 			}
-			return false
-		}
-
-		found := findCorrespondingFunc()
-		if !found {
-			return nil
 		}
 	}
 
@@ -904,7 +902,7 @@ func RemoveThisPackagePathFromSignature(signature string, pkgPath string) string
 	return clean
 }
 
-func scanStruct(st *scanner.Struct) *FEStruct {
+func scanStruct(st *scanner.Struct, pkgPath string) *FEStruct {
 	// TODO: don't scan embedded structs; either they are in this package (and I'll find them in this list),
 	// or they are in another package (and they are not a problem now).
 	var fe = FEStruct{
@@ -916,6 +914,14 @@ func scanStruct(st *scanner.Struct) *FEStruct {
 	fe.Documentation = getDocumentation(st.Docs)
 
 	fe.original = st
+
+	{
+		if st.Embedded != nil {
+			for _, em := range st.Embedded {
+				fe.Embedded = append(fe.Embedded, getFEType(em, pkgPath))
+			}
+		}
+	}
 
 	// Get more type info:
 	{
@@ -963,6 +969,7 @@ type FEStruct struct {
 	ID string
 	Documentation
 	Fields   []*FEField
+	Embedded []*FEType
 	original *scanner.Struct
 }
 
