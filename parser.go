@@ -13,6 +13,7 @@ import (
 
 	"github.com/gagliardetto/codebox/scanner"
 	"github.com/gagliardetto/golang-go/cmd/go/not-internal/search"
+	"github.com/gagliardetto/ref"
 	. "github.com/gagliardetto/utilz"
 	"golang.org/x/tools/go/packages"
 )
@@ -93,23 +94,23 @@ func Load(pk *scanner.Package) (*FEPackage, error) {
 	}
 
 	{ // Deduplicate:
-		fePackage.Funcs = DeduplicateSlice(fePackage.Funcs, func(i int) string {
+		fePackage.Funcs = ref.DeduplicateSlice(fePackage.Funcs, func(i int) string {
 			return fePackage.Funcs[i].Signature
 		}).([]*FEFunc)
 
-		fePackage.TypeMethods = DeduplicateSlice(fePackage.TypeMethods, func(i int) string {
+		fePackage.TypeMethods = ref.DeduplicateSlice(fePackage.TypeMethods, func(i int) string {
 			return fePackage.TypeMethods[i].Func.Signature
 		}).([]*FETypeMethod)
 
-		fePackage.InterfaceMethods = DeduplicateSlice(fePackage.InterfaceMethods, func(i int) string {
+		fePackage.InterfaceMethods = ref.DeduplicateSlice(fePackage.InterfaceMethods, func(i int) string {
 			return fePackage.InterfaceMethods[i].Func.Signature
 		}).([]*FEInterfaceMethod)
 
-		fePackage.Structs = DeduplicateSlice(fePackage.Structs, func(i int) string {
+		fePackage.Structs = ref.DeduplicateSlice(fePackage.Structs, func(i int) string {
 			return fePackage.Structs[i].TypeString
 		}).([]*FEStruct)
 
-		fePackage.Types = DeduplicateSlice(fePackage.Types, func(i int) string {
+		fePackage.Types = ref.DeduplicateSlice(fePackage.Types, func(i int) string {
 			return fePackage.Types[i].TypeString
 		}).([]*FEType)
 	}
