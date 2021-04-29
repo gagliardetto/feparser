@@ -197,6 +197,9 @@ func (v *FEFunc) GetFunc() *FEFunc {
 func (v *FEFunc) GetReceiver() *FEReceiver {
 	return nil
 }
+func (v *FEFunc) IsInterface() bool {
+	return false
+}
 
 // GetRelativeElement: provided an absolute index, the GetRelativeElement function
 // returns the element it corresponds to, along with the relative index
@@ -258,6 +261,9 @@ func (v *FETypeMethod) GetFunc() *FEFunc {
 func (v *FETypeMethod) GetReceiver() *FEReceiver {
 	return v.Receiver
 }
+func (v *FETypeMethod) IsInterface() bool {
+	return false
+}
 
 // GetRelativeElement: provided an absolute index, the GetRelativeElement function
 // returns the element it corresponds to, along with the relative index
@@ -311,6 +317,9 @@ func (v *FEInterfaceMethod) GetReceiver() *FEReceiver {
 // of that kind of element.
 func (v *FEInterfaceMethod) GetRelativeElement(index int) (Element, interface{}, int, error) {
 	return FEIToFET(v).GetRelativeElement(index)
+}
+func (v *FEInterfaceMethod) IsInterface() bool {
+	return true
 }
 
 type FEReceiver struct {
